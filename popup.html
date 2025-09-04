@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Raindrop Delayed Opener</title>
+  <style>
+    body { font-family: sans-serif; font-size: 13px; width: 480px; max-height: 700px; overflow-y: auto; padding:8px; }
+    .section { margin-bottom: 10px; }
+    .controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+    input[type=text], input[type=password], input[type=number] { padding:6px; font-size:13px; }
+    button { padding:6px 10px; }
+    .progress { font-weight: bold; margin-bottom:6px; }
+    ul.bookmarks { list-style:none; padding:0; margin:0; max-height:360px; overflow:auto; border:1px solid #eee; border-radius:4px; }
+    ul.bookmarks li { padding:6px 8px; border-bottom:1px solid #f3f3f3; cursor:pointer; user-select:none; }
+    ul.bookmarks li:hover { background:#fafafa; }
+    ul.bookmarks li.selected { background:#dff0ff; }
+    .tags { font-size:11px; color:#666; margin-top:4px; }
+    #status { color:#b33; }
+  </style>
+</head>
+<body>
+  <div class="section" id="tokenSection">
+    <div><strong>Raindrop.io Token (建議用加密存)</strong></div>
+    <div style="margin-top:6px;">
+      <input type="text" id="tokenInput" placeholder="貼上 Personal Token" style="width:70%">
+      <input type="password" id="passwordInput" placeholder="加密密碼 (若要加密儲存)" style="width:25%">
+    </div>
+    <div class="controls" style="margin-top:6px;">
+      <button id="saveEncrypted">儲存 (加密)</button>
+      <button id="savePlain">儲存 (明文)</button>
+      <button id="clearToken">移除 Token</button>
+      <span id="status"></span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="controls">
+      <input type="text" id="tagFilter" placeholder="標籤篩選（多標籤以逗號或空白分隔）" style="flex:1">
+      <button id="loadBtn">載入書籤</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="progress" id="progress">進度：0 / 0</div>
+    <div class="controls">
+      <label>延遲秒數 <input type="number" id="delay" value="2" min="0" max="60" style="width:70px"></label>
+      <button id="start">開始</button>
+      <button id="pause">暫停</button>
+      <button id="stop">停止</button>
+    </div>
+    <ul class="bookmarks" id="bookmarkList"></ul>
+  </div>
+
+  <script src="crypto.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
