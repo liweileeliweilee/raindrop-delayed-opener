@@ -15,17 +15,18 @@
 
 首先，將本專案克隆到你的本機電腦。
 
-```sh
+```bash
 git clone [https://github.com/liweileeliweilee/raindrop-delayed-opener.git](https://github.com/liweileeliweilee/raindrop-delayed-opener.git)
 cd raindrop-delayed-opener
 ```
 ### 2. 執行建置腳本
 
 執行 build-extension.sh 腳本，它會自動為 Chrome 和 Firefox 建立各自的擴充功能建置檔。
-Bash
 
+```bash
 chmod +x build-extension.sh
 ./build-extension.sh
+```
 
 執行完成後，build 資料夾會被建立，其中包含 chrome 和 firefox 兩個子目錄。
 
