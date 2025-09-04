@@ -16,7 +16,7 @@
 首先，將本專案克隆到你的本機電腦。
 
 ```sh
-git clone [https://github.com/你的用戶名/raindrop-delayed-opener.git](https://github.com/你的用戶名/raindrop-delayed-opener.git)
+git clone [https://github.com/liweileeliweilee/raindrop-delayed-opener.git](https://github.com/liweileeliweilee/raindrop-delayed-opener.git)
 cd raindrop-delayed-opener
 ```
 ### 2. 執行建置腳本
