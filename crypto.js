@@ -1,79 +1,61 @@
-async function encryptTokenWithPassword(token, password) {
+// crypto.js - 瀏覽器端輕量 AES-GCM 加解密 (PBKDF2 derivation)
+async function _getKeyFromPassword(password, salt = "raindrop_salt_v1") {
   const enc = new TextEncoder();
-  const data = enc.encode(token);
-  const salt = window.crypto.getRandomValues(new Uint8Array(16));
-  
-  const keyMaterial = await window.crypto.subtle.importKey(
+  const pwKey = await crypto.subtle.importKey(
     "raw",
     enc.encode(password),
-    { name: "PBKDF2" },
+    "PBKDF2",
     false,
-    ["deriveBits", "deriveKey"]
+    ["deriveKey"]
   );
-
-  const key = await window.crypto.subtle.deriveKey(
+  const key = await crypto.subtle.deriveKey(
     {
       name: "PBKDF2",
-      salt: salt,
+      salt: enc.encode(salt),
       iterations: 100000,
-      hash: "SHA-256",
+      hash: "SHA-256"
     },
-    keyMaterial,
+    pwKey,
     { name: "AES-GCM", length: 256 },
-    true,
-    ["encrypt"]
+    false,
+    ["encrypt", "decrypt"]
   );
-
-  const iv = window.crypto.getRandomValues(new Uint8Array(12));
-  
-  const encrypted = await window.crypto.subtle.encrypt(
-    { name: "AES-GCM", iv: iv },
-    key,
-    data
-  );
-
-  const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
-  combined.set(salt);
-  combined.set(iv, salt.length);
-  combined.set(new Uint8Array(encrypted), salt.length + iv.length);
-  
-  return btoa(String.fromCharCode.apply(null, combined));
+  return key;
 }
 
-async function decryptTokenWithPassword(encryptedDataBase64, password) {
+function _bufToBase64(buf) {
+  const bytes = new Uint8Array(buf);
+  let str = "";
+  for (let i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+  return btoa(str);
+}
+
+function _base64ToBuf(b64) {
+  const str = atob(b64);
+  const buf = new Uint8Array(str.length);
+  for (let i = 0; i < str.length; i++) buf[i] = str.charCodeAt(i);
+  return buf;
+}
+
+async function encryptTokenWithPassword(token, password) {
+  const key = await _getKeyFromPassword(password);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder();
+  const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, enc.encode(token));
+  // combine iv + cipher
+  const combined = new Uint8Array(iv.length + cipher.byteLength);
+  combined.set(iv, 0);
+  combined.set(new Uint8Array(cipher), iv.length);
+  return _bufToBase64(combined.buffer);
+}
+
+async function decryptTokenWithPassword(encryptedBase64, password) {
+  const combined = _base64ToBuf(encryptedBase64);
+  const iv = combined.slice(0, 12);
+  const cipher = combined.slice(12).buffer;
+  const key = await _getKeyFromPassword(password);
+  const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipher);
   const dec = new TextDecoder();
-  const data = Uint8Array.from(atob(encryptedDataBase64), c => c.charCodeAt(0));
-  
-  const salt = data.slice(0, 16);
-  const iv = data.slice(16, 28);
-  const encryptedData = data.slice(28);
-
-  const keyMaterial = await window.crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(password),
-    { name: "PBKDF2" },
-    false,
-    ["deriveBits", "deriveKey"]
-  );
-
-  const key = await window.crypto.subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      salt: salt,
-      iterations: 100000,
-      hash: "SHA-256",
-    },
-    keyMaterial,
-    { name: "AES-GCM", length: 256 },
-    true,
-    ["decrypt"]
-  );
-
-  const decrypted = await window.crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: iv },
-    key,
-    encryptedData
-  );
-
   return dec.decode(decrypted);
 }
+

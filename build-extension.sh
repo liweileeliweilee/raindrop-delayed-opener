@@ -11,8 +11,13 @@ rm -rf "$BUILD_DIR"
 mkdir -p "$CHROME_DIR" "$FIREFOX_DIR"
 
 # 複製共同檔案
-cp popup.html popup.js crypto.js background.js icon1024.png "$CHROME_DIR/"
-cp popup.html popup.js crypto.js background.js icon1024.png "$FIREFOX_DIR/"
+cp popup.html popup.js crypto.js icon1024.png "$CHROME_DIR/"
+cp popup.html popup.js crypto.js icon1024.png "$FIREFOX_DIR/"
+
+# 處理背景腳本 (這是關鍵)
+# Chrome 使用 MV3 的 background.js，Firefox 則沿用舊的
+cp background.js "$CHROME_DIR/"
+cp background.js "$FIREFOX_DIR/background.js"
 
 # 產生不同尺寸圖示
 for size in 16 32 48 128; do
@@ -25,8 +30,8 @@ cat > "$CHROME_DIR/manifest.json" <<'EOF'
 {
   "manifest_version": 3,
   "name": "Raindrop.io Delayed Opener",
-  "version": "1.1.0",
-  "description": "從 Raindrop.io 讀取書籤並延遲依序開啟（支援標籤、Shift/Ctrl 多選、暫停/停止）",
+  "version": "1.1.1",
+  "description": "從 Raindrop.io 讀取書籤並延遲依序開啟",
   "permissions": [
     "tabs",
     "storage"
@@ -60,8 +65,8 @@ cat > "$FIREFOX_DIR/manifest.json" <<'EOF'
 {
   "manifest_version": 2,
   "name": "Raindrop.io Delayed Opener",
-  "version": "1.1.0",
-  "description": "從 Raindrop.io 讀取書籤並延遲依序開啟（支援標籤、Shift/Ctrl 多選、暫停/停止）",
+  "version": "1.1.1",
+  "description": "從 Raindrop.io 讀取書籤並延遲依序開啟",
   "permissions": [
     "tabs",
     "storage",
@@ -89,9 +94,7 @@ cat > "$FIREFOX_DIR/manifest.json" <<'EOF'
 EOF
 
 # 重新壓縮 Firefox 擴充功能
-# 切換到目標目錄
 cd "$FIREFOX_DIR"
-# 打包所有檔案為 .xpi
 zip -r "$XPI_FILE" *
 
 echo "擴充功能已成功建置於 $FIREFOX_DIR"
