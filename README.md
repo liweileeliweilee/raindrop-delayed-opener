@@ -59,13 +59,6 @@ Firefox
 完成後，你就可以開始使用了。
 
 專案結構
-├── background.js
-├── build-extension.sh
-├── crypto.js
-├── icon1024.png
-├── popup.html
-├── popup.js
-└── README.md
 
     background.js：處理所有分頁開啟、計時和狀態管理的核心邏輯。
 
