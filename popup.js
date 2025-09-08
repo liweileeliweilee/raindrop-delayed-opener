@@ -106,19 +106,21 @@
   // ========== render / filter ==========
   function renderList(bookmarks, filterTags) {
     bookmarkList.innerHTML = "";
-    selectedIndexes.clear();
+    // 不再清除 selectedIndexes，因為我們要在每次渲染後全選
+    selectedIndexes = new Set();
 
     const normalizedFilter = (filterTags || []).map(t => t.trim().toLowerCase()).filter(Boolean);
 
+    let filteredBookmarks = [];
     bookmarks.forEach((b, idx) => {
-      // filter logic: if no filter -> show all
-      // if filter exists -> show if any tag matches any filterTerm
       let show = true;
       if (normalizedFilter.length > 0) {
         const btags = (b.tags || []).map(t => t.toLowerCase());
         show = normalizedFilter.some(ft => btags.some(bt => bt.includes(ft)));
       }
       if (!show) return;
+
+      filteredBookmarks.push({ bookmark: b, index: idx });
 
       const li = document.createElement("li");
       li.classList.add("bookmark");
@@ -139,14 +141,20 @@
       li.appendChild(tagDiv);
 
       li.addEventListener("click", (e) => {
-        // click handler supports ctrl/meta/shift selection
         handleListSelection(e, li);
       });
 
       bookmarkList.appendChild(li);
     });
 
-    progressEl.textContent = `進度：0 / ${bookmarkList.querySelectorAll("li").length}`;
+    // 新增邏輯: 自動全選所有可見的書籤
+    const allVisibleLis = bookmarkList.querySelectorAll("li.bookmark");
+    allVisibleLis.forEach(li => {
+      li.classList.add("selected");
+      selectedIndexes.add(parseInt(li.dataset.index));
+    });
+
+    progressEl.textContent = `進度：0 / ${allVisibleLis.length}`;
   }
 
   function handleListSelection(e, li) {
@@ -170,19 +178,13 @@
 
   // ========== Start / Pause / Stop ==========
   function sendStartToBackground(urls, delaySec) {
-    // try to get current window id from active tab
     chrome.tabs.query({active:true, currentWindow:true}, (tabs) => {
       const windowId = (tabs && tabs[0] && tabs[0].windowId) || undefined;
       try {
         chrome.runtime.sendMessage({ command: "openSelectedBookmarks", urls, delay: delaySec, windowId }, (resp) => {
-          // ignore response; background has safeSendMessage
-          if (chrome.runtime.lastError) {
-            // ignore
-          }
+          if (chrome.runtime.lastError) {}
         });
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     });
   }
 
@@ -202,7 +204,6 @@
     try {
       const enc = await encryptTokenWithPassword(token, password);
       await storageSet({ [KEY_ENC]: enc });
-      // remove plain token if existed
       await storageRemove([KEY_PLAIN]);
       statusEl.textContent = "已以加密方式儲存 Token";
       setTimeout(()=> statusEl.textContent = "", 2500);
@@ -230,7 +231,6 @@
   });
 
   loadBtn.addEventListener("click", async () => {
-    // load: prefer encrypted (requires password input), else plain
     try {
       const store = await storageGet([KEY_ENC, KEY_PLAIN]);
       let token = null;
@@ -248,11 +248,9 @@
         return alert("尚未儲存 Token，請先貼上並儲存");
       }
 
-      tokenInput.value = token; // fill token input (convenience)
-      // fetch bookmarks
+      tokenInput.value = token;
       progressEl.textContent = "正在載入書籤...";
       raindropBookmarks = await fetchAllRaindrops(token);
-      // show all (no filter)
       renderList(raindropBookmarks, []);
     } catch (e) {
       console.error(e);
@@ -261,6 +259,7 @@
   });
 
   startBtn.addEventListener("click", async () => {
+    // 修正選取邏輯: 直接從 DOM 抓取被選取的項目
     const selected = Array.from(bookmarkList.querySelectorAll("li.selected"));
     if (selected.length === 0) return alert("請先選取一或多個書籤");
     const urls = selected.map(li => li.dataset.url);
@@ -271,19 +270,13 @@
   pauseBtn.addEventListener("click", () => sendPause());
   stopBtn.addEventListener("click", () => sendStop());
 
-  // Tag filter on input
   tagFilterInput.addEventListener("input", (e) => {
     const raw = e.target.value.trim();
     const terms = raw === "" ? [] : raw.split(/[\s,]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
     if (!raindropBookmarks || raindropBookmarks.length === 0) return;
-    if (terms.length === 0) {
-      renderList(raindropBookmarks, []);
-    } else {
-      renderList(raindropBookmarks, terms);
-    }
+    renderList(raindropBookmarks, terms);
   });
 
-  // receive progress/done from background
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (!message || !message.command) return;
     if (message.command === "progress") {
@@ -294,17 +287,13 @@
     return true;
   });
 
-  // auto-load token presence on open: (but require user to click "載入書籤" to decrypt)
   (async function init() {
     const store = await storageGet([KEY_ENC, KEY_PLAIN]);
     if (store[KEY_PLAIN]) tokenInput.value = store[KEY_PLAIN];
     if (store[KEY_ENC]) {
-      // show hint to user to enter password and click 載入書籤
       statusEl.textContent = "偵測到已加密 Token，請輸入密碼後按「載入書籤」";
     }
-    // register popupReady (optional)
     try { chrome.runtime.sendMessage({ command: "popupReady" }); } catch(e) {}
   })();
 
-})(); // end IIFE
-
+})();
