@@ -106,7 +106,6 @@
   // ========== render / filter ==========
   function renderList(bookmarks, filterTags) {
     bookmarkList.innerHTML = "";
-    // 不再清除 selectedIndexes，因為我們要在每次渲染後全選
     selectedIndexes = new Set();
 
     const normalizedFilter = (filterTags || []).map(t => t.trim().toLowerCase()).filter(Boolean);
@@ -147,7 +146,6 @@
       bookmarkList.appendChild(li);
     });
 
-    // 新增邏輯: 自動全選所有可見的書籤
     const allVisibleLis = bookmarkList.querySelectorAll("li.bookmark");
     allVisibleLis.forEach(li => {
       li.classList.add("selected");
@@ -259,7 +257,6 @@
   });
 
   startBtn.addEventListener("click", async () => {
-    // 修正選取邏輯: 直接從 DOM 抓取被選取的項目
     const selected = Array.from(bookmarkList.querySelectorAll("li.selected"));
     if (selected.length === 0) return alert("請先選取一或多個書籤");
     const urls = selected.map(li => li.dataset.url);
@@ -277,6 +274,57 @@
     renderList(raindropBookmarks, terms);
   });
 
+  tokenInput.addEventListener("keydown", async (e) => {
+    if (e.key === "Enter") {
+      const token = tokenInput.value.trim();
+      if (!token) {
+        alert("請輸入 Personal Token");
+        return;
+      }
+      const store = await storageGet([KEY_ENC, KEY_PLAIN]);
+      if (!store[KEY_ENC] && !store[KEY_PLAIN]) {
+        await savePlainToken(token);
+      }
+      loadBtn.click();
+    }
+  });
+
+  passwordInput.addEventListener("keydown", async (e) => {
+    if (e.key === "Enter") {
+      const token = tokenInput.value.trim();
+      const password = passwordInput.value;
+      if (!token || !password) {
+        alert("請輸入 Personal Token 和加密密碼");
+        return;
+      }
+      const store = await storageGet([KEY_ENC, KEY_PLAIN]);
+      if (!store[KEY_ENC] && !store[KEY_PLAIN]) {
+        await saveEncryptedToken(token, password);
+      }
+      loadBtn.click();
+    }
+  });
+
+  // 新增 passwordInput 的 input 事件監聽器來處理自動解密
+  passwordInput.addEventListener("input", async () => {
+    const password = passwordInput.value;
+    const token = tokenInput.value;
+    // 只在 password 有值且 token 輸入框為空時嘗試解密
+    if (password && !token) {
+      try {
+        const store = await storageGet([KEY_ENC]);
+        if (store[KEY_ENC]) {
+          const decryptedToken = await decryptTokenWithPassword(store[KEY_ENC], password);
+          tokenInput.value = decryptedToken;
+          statusEl.textContent = "已自動解密並填入 Token";
+        }
+      } catch (e) {
+        statusEl.textContent = "解密失敗，密碼錯誤或 Token 已損壞";
+        console.error("解密失敗", e);
+      }
+    }
+  });
+
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (!message || !message.command) return;
     if (message.command === "progress") {
@@ -287,13 +335,18 @@
     return true;
   });
 
+  // 簡化 init() 函式，只負責在擴充功能開啟時載入明文 Token 或提示
   (async function init() {
     const store = await storageGet([KEY_ENC, KEY_PLAIN]);
-    if (store[KEY_PLAIN]) tokenInput.value = store[KEY_PLAIN];
-    if (store[KEY_ENC]) {
-      statusEl.textContent = "偵測到已加密 Token，請輸入密碼後按「載入書籤」";
+    if (store[KEY_PLAIN]) {
+      tokenInput.value = store[KEY_PLAIN];
+      statusEl.textContent = "已載入明文 Token";
+    } else if (store[KEY_ENC]) {
+      tokenInput.placeholder = "已加密儲存，請輸入密碼";
+      statusEl.textContent = "偵測到已加密 Token，請輸入密碼後按 Enter 或「載入書籤」";
     }
+    
     try { chrome.runtime.sendMessage({ command: "popupReady" }); } catch(e) {}
   })();
 
-})();
+})(); // end IIFE
