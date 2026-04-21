@@ -30,7 +30,7 @@ cat > "$CHROME_DIR/manifest.json" <<'EOF'
 {
   "manifest_version": 3,
   "name": "Raindrop.io Delayed Opener",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "從 Raindrop.io 讀取書籤並延遲依序開啟",
   "permissions": [
     "tabs",
@@ -65,8 +65,16 @@ cat > "$FIREFOX_DIR/manifest.json" <<'EOF'
 {
   "manifest_version": 2,
   "name": "Raindrop.io Delayed Opener",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "從 Raindrop.io 讀取書籤並延遲依序開啟",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{42d2c188-12dc-4be7-b6e7-ca225bb02b8f}",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  },
   "permissions": [
     "tabs",
     "storage",
